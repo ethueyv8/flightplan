@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FPL Transform">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f4e79">
 <style>
 :root{--bg:#fff;--fg:#000;--gut:#eee;--gutfg:#666;--add:#fff3a3;--del:#ffd0d0;--bar:#1f4e79;--line:#bbb}
@@ -15,8 +16,8 @@ body.reverse{--bg:#000;--fg:#fff;--gut:#222;--gutfg:#aaa;--add:#5a5200;--del:#6a
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
 body{display:flex;flex-direction:column;height:100dvh;background:var(--bg);color:var(--fg);
-  font-family:-apple-system,system-ui,sans-serif;padding-top:env(safe-area-inset-top)}
-#bar{background:var(--bar);display:flex;gap:6px;padding:6px;overflow-x:auto;flex:none;-webkit-overflow-scrolling:touch}
+  font-family:-apple-system,system-ui,sans-serif;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+#bar{background:var(--bar);display:flex;gap:6px;padding:calc(env(safe-area-inset-top) + 18px) 8px 8px;overflow-x:auto;flex:none;-webkit-overflow-scrolling:touch}
 button{font:inherit;font-size:14px;padding:8px 10px;border-radius:6px;border:1px solid #888;background:#f4f4f4;color:#000;white-space:nowrap}
 button:disabled{opacity:.45}
 button.primary{background:#ffd966}
@@ -52,11 +53,13 @@ button.primary{background:#ffd966}
   <button id="bOpen">Open Source</button>
   <button id="bClose" disabled>Close Source</button>
   <button id="bApply" class="primary" disabled>Apply Rules</button>
+  <button id="bNames" disabled>Waypoint Names</button>
   <button id="bLegs" disabled>Leg Altitudes</button>
   <button id="bSave" disabled>Save Destination</button>
   <button id="bRules">Business Rules</button>
   <button id="bCfg">Configuration</button>
   <button id="bHelp">Help</button>
+  <span id="offline" style="flex:none;align-self:center;font-size:12px;color:#fff;padding:0 6px;white-space:nowrap">Offline: checking</span>
 </div>
 <input type="file" id="file" style="display:none">
 <input type="file" id="rulesFile" style="display:none">
@@ -84,6 +87,17 @@ const FPT = (function () {
     '',
     '# 5. A blank waypoint type becomes a user waypoint',
     'BLANK_TYPE type="USER WAYPOINT"',
+    '',
+    '# 14. Waypoint names. The Garmin only accepts names of letters and numbers (up to 8 seen so far).',
+    '#     ForeFlight names map points like 40.981/-111.921, which the Garmin drops.',
+    '#     Garmin schema allows 1-12 capital letters/numbers; 8 is the longest proven on the 696.',
+    '#     Any invalid name becomes PREFIX + number. Blank prefix = first airport in the route that is not',
+    '#     the Home airport (Configuration), without a leading K: U02 -> KBMC gives U021, U022 ...',
+    '#     Names can be reviewed and edited with the Waypoint Names button.',
+    'RENAME_WAYPOINTS prefix="" max_length="8"',
+    '',
+    '# 15. Route name and comments: Garmin allows only capital letters, numbers, space and /, up to 25 characters.',
+    'CLEAN_TEXT max_length="25"',
     '',
     '# 4 and 11. Add country code (from Configuration) to waypoints and route points.',
     '#    Left blank for user waypoints. To force a value add  code="K2"',
@@ -118,7 +132,7 @@ const FPT = (function () {
   ].join('\n');
 
   const COMMANDS = ['DATE_ADD_DASHES', 'REMOVE_ELEMENT', 'BLANK_TYPE', 'ADD_COUNTRY_CODE', 'ROUND_COORDINATES',
-    'ADD_COMMENT', 'ROUTE_NAME_REPLACE', 'LEG_COMMENT', 'REGEX_REPLACE', 'INDENT', 'LINE_ENDINGS'];
+    'ADD_COMMENT', 'ROUTE_NAME_REPLACE', 'LEG_COMMENT', 'REGEX_REPLACE', 'INDENT', 'LINE_ENDINGS', 'RENAME_WAYPOINTS', 'CLEAN_TEXT'];
 
   function parseXml(src) {
     let text = src.replace(/^\uFEFF/, '');
@@ -196,7 +210,7 @@ const FPT = (function () {
 
   function legText(v) {
     v = (v || '').trim().toUpperCase();
-    return /^\d+$/.test(v) ? 'CRZ ' + v : v;
+    return /^\d+$/.test(v) ? 'CRZ ' + v : cleanText(v, 25);
   }
 
   // Match each route point to its waypoint-table entry.
@@ -228,6 +242,16 @@ const FPT = (function () {
           if (!p.tag) { warnings.push('Rules line ' + r.line + ': REMOVE_ELEMENT needs tag="...".'); break; }
           walk(doc.root, (k, parent) => { if (k.name === p.tag) parent.children.splice(parent.children.indexOf(k), 1); });
           break;
+        case 'RENAME_WAYPOINTS': {
+          const max = parseInt(p.max_length || '8', 10) || 8;
+          renameInvalid(doc, (p.prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), max, cfg.home);
+          break;
+        }
+        case 'CLEAN_TEXT': {
+          const max = parseInt(p.max_length || '25', 10) || 25;
+          all(doc, 'route-name').concat(all(doc, 'comment')).forEach(n => { n.text = cleanText(n.text, max); });
+          break;
+        }
         case 'BLANK_TYPE':
           all(doc, 'type').concat(all(doc, 'waypoint-type')).forEach(n => { if (!n.text) n.text = p.type || 'USER WAYPOINT'; });
           break;
@@ -277,9 +301,74 @@ const FPT = (function () {
           break;
       }
     });
+    const maxLen = (pr.rules.filter(r => r.cmd === 'RENAME_WAYPOINTS').pop() || { p: {} }).p.max_length;
+    const bad = badNames(doc, parseInt(maxLen || '8', 10) || 8);
+    all(doc, 'route-name').concat(all(doc, 'comment')).forEach(n => { if (n.text && !/^[A-Z0-9 \/]{1,25}$/.test(n.text)) warnings.push('<' + n.name + '>' + n.text + ' may not load on the Garmin (capital letters, numbers, space and / only, up to 25).'); });
+    if (bad.length) warnings.push('These waypoint names may not load on the Garmin (use letters and numbers only): ' + bad.join(', '));
     let text = serialize(doc, indent, '\n');
     regexes.forEach(x => { text = text.replace(x[0], x[1]); });
     return { text: text, warnings: warnings, eol: eol };
+  }
+
+  /* ----- waypoint names ----- */
+  function validId(id, max) { return new RegExp('^[A-Z0-9]{1,' + (max || 8) + '}$').test(id); }
+  function idsOf(doc) {
+    const seen = [];
+    all(doc, 'waypoint').forEach(w => { const i = (kid(w, 'identifier') || {}).text || ''; if (seen.indexOf(i) < 0) seen.push(i); });
+    all(doc, 'route-point').forEach(r => { const i = (kid(r, 'waypoint-identifier') || {}).text || ''; if (seen.indexOf(i) < 0) seen.push(i); });
+    return seen;
+  }
+  function badNames(doc, max) { return idsOf(doc).filter(i => !validId(i, max)); }
+  function cleanText(t, max) { return (t || '').toUpperCase().replace(/[^A-Z0-9 \/]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 25).trim(); }
+  function defaultPrefix(doc, home) {
+    home = (home || '').toUpperCase().trim();
+    const pts = all(doc, 'route-point').map(r => ({ id: (kid(r, 'waypoint-identifier') || {}).text || '', t: (kid(r, 'waypoint-type') || {}).text || '' }));
+    const apts = pts.filter(x => x.t === 'AIRPORT').map(x => x.id);
+    const pick = apts.find(a => a !== home) || (pts.length ? pts[pts.length - 1].id : '');
+    let p = pick.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (/^K[A-Z0-9]{3}$/.test(p)) p = p.slice(1);
+    return p || 'WP';
+  }
+  function applyNames(doc, map) {
+    all(doc, 'identifier').concat(all(doc, 'waypoint-identifier')).forEach(n => { if (map[n.text] !== undefined) n.text = map[n.text]; });
+  }
+  function renameInvalid(doc, prefix, max, home) {
+    const ids = idsOf(doc), used = new Set(ids.filter(i => validId(i, max)));
+    const pre = prefix || defaultPrefix(doc, home), map = {}; let n = 0;
+    ids.forEach(id => {
+      const up = id.toUpperCase();
+      if (validId(id, max)) return;
+      if (validId(up, max) && !used.has(up)) { map[id] = up; used.add(up); return; }
+      let name;
+      do { n++; const s = String(n); name = pre.slice(0, Math.max(1, max - s.length)) + s; } while (used.has(name));
+      used.add(name); map[id] = name;
+    });
+    applyNames(doc, map);
+    return map;
+  }
+  function getNames(text, home) {
+    const doc = parseXml(text);
+    return { prefix: defaultPrefix(doc, home), names: idsOf(doc).map(id => {
+      const w = all(doc, 'waypoint').find(x => ((kid(x, 'identifier') || {}).text || '') === id);
+      return { id: id, type: w ? ((kid(w, 'type') || {}).text || '') : '' };
+    }) };
+  }
+  function setNames(text, map) {
+    const doc = parseXml(text); applyNames(doc, map);
+    const im = text.match(/\n([ \t]+)</);
+    return serialize(doc, im ? im[1] : '', '\n');
+  }
+  function renumber(text, prefix, max, home) {
+    // Rename all user waypoints to PREFIX + number, in route order.
+    const doc = parseXml(text), ids = idsOf(doc), m = max || 8;
+    const user = new Set(all(doc, 'waypoint').filter(w => ((kid(w, 'type') || {}).text || '') === 'USER WAYPOINT').map(w => (kid(w, 'identifier') || {}).text || ''));
+    const pre = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || defaultPrefix(doc, home);
+    const used = new Set(ids.filter(i => !user.has(i))), map = {}; let n = 0;
+    ids.filter(i => user.has(i)).forEach(id => {
+      let name; do { n++; const s = String(n); name = pre.slice(0, Math.max(1, m - s.length)) + s; } while (used.has(name));
+      used.add(name); map[id] = name;
+    });
+    return map;
   }
 
   function getLegs(text) {
@@ -322,7 +411,7 @@ const FPT = (function () {
     return { added: added, removed: removed };
   }
 
-  return { DEFAULT_RULES, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
+  return { DEFAULT_RULES, validId, getNames, setNames, renumber, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
 })();
 if (typeof module !== 'undefined') module.exports = FPT;
 </script>
@@ -330,13 +419,13 @@ if (typeof module !== 'undefined') module.exports = FPT;
 <script>
 /* ===== Screen code ===== */
 (function () {
-  const APP_VERSION = '2.0.0', BUILD_DATE = '2026-10-04';
+  const APP_VERSION = '2.0.2', BUILD_DATE = '2026-10-15';
   const $ = id => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem('fpt.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('fpt.' + k, JSON.stringify(v)); } catch (e) { } }
   };
-  let cfg = Object.assign({ theme: 'standard', country: 'US', user: '', rulesName: 'DefaultBusinessRules_001.txt' }, store.get('cfg', {}));
+  let cfg = Object.assign({ theme: 'standard', country: 'US', home: 'KBMC', user: '', rulesName: 'DefaultBusinessRules_001.txt' }, store.get('cfg', {}));
   let rules = store.get('rules', null) || { text: FPT.DEFAULT_RULES, rev: 1, edited: '', by: '' };
   let srcText = '', srcName = '', applied = false, dirty = false, eol = '\r\n';
 
@@ -362,7 +451,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
     $('srcLabel').textContent = 'Source (read-only)' + (srcName ? ' - ' + srcName : '');
     $('dstLabel').textContent = 'Destination' + (applied ? ' (editable' + (dirty ? ', not saved)' : ', saved)') : '');
     $('bClose').disabled = !srcText; $('bApply').disabled = !srcText;
-    $('bLegs').disabled = !applied; $('bSave').disabled = !applied;
+    $('bLegs').disabled = !applied; $('bNames').disabled = !applied; $('bSave').disabled = !applied;
   }
   let syncing = false;
   function sync(a, b) {
@@ -440,7 +529,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
     catch (e) { return message('Leg altitudes', 'The destination text is not valid XML, so the legs cannot be read.\n\n' + e.message); }
     if (!legs.length) return message('Leg altitudes', 'This flight plan has no legs.');
     const alt = FPT.sourceAltitude(srcText);
-    let h = '<div class="note">Type a cruise altitude in feet for each leg (8500 becomes CRZ 8500), or any short note. ' +
+    let h = '<div class="note">Type a cruise altitude in feet for each leg (8500 becomes CRZ 8500), or a short note (capital letters, numbers, space and / only, up to 25). ' +
       'It is stored in the comment of the waypoint the leg flies TO. Leave blank for no note.</div>' +
       '<div class="row"><input type="text" id="legAll" inputmode="numeric" value="' + esc(alt) + '" placeholder="altitude"><button id="legFill">Fill all legs</button></div><hr>';
     legs.forEach((l, i) => {
@@ -454,6 +543,37 @@ if (typeof module !== 'undefined') module.exports = FPT;
       }
     }]);
     $('legFill').onclick = () => document.querySelectorAll('#dlg .leg:not([disabled])').forEach(x => { x.value = $('legAll').value; });
+  };
+
+  /* ---------- waypoint names ---------- */
+  $('bNames').onclick = () => {
+    let info;
+    try { info = FPT.getNames($('dstText').value, cfg.home); }
+    catch (e) { return message('Waypoint Names', 'The destination text is not valid XML, so the names cannot be read.\n\n' + e.message); }
+    let h = '<div class="note">The Garmin accepts names of 1 to 8 capital letters and numbers. Each name must be different from waypoints already stored in the GPS, or the stored one may be replaced.</div>' +
+      '<div class="row"><input type="text" id="nmPrefix" autocapitalize="characters" value="' + esc(info.prefix) + '"><button id="nmRenum">Renumber user waypoints</button></div><hr>';
+    info.names.forEach((n, i) => {
+      h += '<div class="row"><span style="flex:0 0 40%;overflow:hidden;text-overflow:ellipsis">' + esc(n.id) + '<br><small>' + esc(n.type) + '</small></span>' +
+        '<input type="text" class="nm" data-i="' + i + '" autocapitalize="characters" value="' + esc(n.id) + '"></div>';
+    });
+    h += '<div class="err" id="nmErr"></div>';
+    dialog('Waypoint Names', h, [{ text: 'Cancel' }, {
+      text: 'Apply', primary: true, fn: () => {
+        const map = {}, vals = [], errs = [];
+        document.querySelectorAll('#dlg .nm').forEach(x => {
+          const id = info.names[+x.dataset.i].id, v = x.value.trim().toUpperCase();
+          if (!FPT.validId(v, 8)) errs.push('"' + x.value + '" - use 1 to 8 letters and numbers only');
+          else if (vals.indexOf(v) >= 0) errs.push('"' + v + '" is used twice');
+          vals.push(v); if (v !== id) map[id] = v;
+        });
+        if (errs.length) { $('nmErr').textContent = errs.join('\n'); return false; }
+        $('dstText').value = FPT.setNames($('dstText').value, map); dirty = true; render();
+      }
+    }]);
+    $('nmRenum').onclick = () => {
+      const map = FPT.renumber($('dstText').value, $('nmPrefix').value, 8, cfg.home);
+      document.querySelectorAll('#dlg .nm').forEach(x => { const id = info.names[+x.dataset.i].id; if (map[id]) x.value = map[id]; });
+    };
   };
 
   /* ---------- save ---------- */
@@ -509,14 +629,18 @@ if (typeof module !== 'undefined') module.exports = FPT;
       '<div class="row"><input type="radio" name="theme" id="thS" style="flex:none"' + (cfg.theme !== 'reverse' ? ' checked' : '') + '><span>Standard - black text on white</span></div>' +
       '<div class="row"><input type="radio" name="theme" id="thR" style="flex:none"' + (cfg.theme === 'reverse' ? ' checked' : '') + '><span>Reverse - white text on black</span></div>' +
       '<label>Default country code</label><input type="text" id="cCountry" autocapitalize="characters" value="' + esc(cfg.country) + '">' +
+      '<label>Home airport (not used as the waypoint name prefix)</label><input type="text" id="cHome" autocapitalize="characters" value="' + esc(cfg.home) + '">' +
       '<label>Your name (recorded when business rules are edited)</label><input type="text" id="cUser" value="' + esc(cfg.user) + '">' +
       '<label>Business rules file name (used for export)</label><input type="text" id="cRules" value="' + esc(cfg.rulesName) + '">' +
       '<p class="note">Flight Plan Transformer version ' + APP_VERSION + ' &middot; built ' + BUILD_DATE + '<br>Files are opened and saved through the iOS Files screens, which remember the last folder used.</p>';
     dialog('Configuration', h, [{ text: 'Cancel' }, {
       text: 'Save', primary: true, fn: () => {
         cfg.theme = $('thR').checked ? 'reverse' : 'standard';
-        cfg.country = $('cCountry').value.trim().toUpperCase().replace(/[<>]/g, '');
+        const cc = $('cCountry').value.trim().toUpperCase().replace(/[<>]/g, '');
+        if (!/^([A-Z0-9]{2})?$/.test(cc)) { alert('Country code must be 2 letters or numbers, such as US or K2.'); return false; }
+        cfg.country = cc;
         cfg.user = $('cUser').value.trim();
+        cfg.home = $('cHome').value.trim().toUpperCase();
         cfg.rulesName = $('cRules').value.trim() || 'DefaultBusinessRules_001.txt';
         store.set('cfg', cfg); applyTheme();
       }
@@ -529,18 +653,35 @@ if (typeof module !== 'undefined') module.exports = FPT;
     '<ol><li>In ForeFlight, export the flight plan as .fpl and save it to Files.</li>',
     '<li><b>Open Source</b> and pick that file. It appears in the top pane and cannot be edited.</li>',
     '<li><b>Apply Rules</b>. The converted file appears in the bottom pane. Yellow lines were added or changed; red lines in the top pane were removed.</li>',
+    '<li>Map points from ForeFlight (named like 40.981/-111.921) are renamed automatically, for example BTF1, BTF2. Use <b>Waypoint Names</b> to check or change the names.</li>',
     '<li>Optional: <b>Leg Altitudes</b> to note a cruise altitude for each leg, or type directly in the bottom pane.</li>',
     '<li><b>Save Destination</b>, check the name, then choose <i>Save to Files</i> and pick the SD card.</li>',
     '<li>Put the SD card in the Garmin 696 and import the flight plan.</li></ol>',
     '<p><b>Scrolling:</b> the two panes scroll together, up/down and left/right.</p>',
     '<p><b>Business Rules:</b> the list of conversion steps. It can be edited, exported to share with another device, and imported. Rules are kept on this device only. Removing the app from the home screen erases them, so export a copy if you customize them.</p>',
-    '<p><b>Configuration:</b> colors, country code (normally US), your name, and the rules file name.</p>',
-    '<p><b>Offline:</b> after the first load the app works with no internet connection. Your flight plans never leave this device.</p>',
+    '<p><b>Configuration:</b> colors, country code (normally US), home airport, your name, and the rules file name.</p>',
+    '<p><b>Offline:</b> open the app from the home screen icon while online until the top bar shows <i>Offline ready</i>. After that it works with no internet connection. Your flight plans never leave this device.</p>',
     '<p class="note">Always verify the imported route on the Garmin before flight.</p>'
   ].join(''), [{ text: 'Close', primary: true }]);
 
   window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => { });
+  /* offline readiness: green when this device holds a saved copy of the app */
+  function offlineStatus(ok, why) {
+    const el = $('offline'); el.textContent = ok ? 'Offline ready \u2713' : 'Not offline ready';
+    el.style.color = ok ? '#9f9' : '#fc9'; el.title = why || '';
+  }
+  async function checkOffline() {
+    try {
+      const ok = !!navigator.serviceWorker.controller && !!(await caches.match('index.html'));
+      offlineStatus(ok, ok ? '' : 'Close the app and open it again from the home screen icon while online.');
+    } catch (e) { offlineStatus(false); }
+  }
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => offlineStatus(false));
+    navigator.serviceWorker.ready.then(() => setTimeout(checkOffline, 500));
+    navigator.serviceWorker.addEventListener('controllerchange', checkOffline);
+    checkOffline();
+  } else offlineStatus(false, 'This browser cannot save the app for offline use.');
   applyTheme(); render();
 })();
 </script>
