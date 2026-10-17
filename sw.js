@@ -1,5 +1,5 @@
 // Change CACHE when publishing a new version so devices pick it up.
-const CACHE = 'fpt-2026.1.1';
+const CACHE = 'fpt-2026.1.2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png',
   'help/app-open.png', 'help/app-applied.png', 'help/app-names.png', 'help/app-legs.png', 'help/app-save.png', 'help/app-config.png',
   'help/ff-route.jpg', 'help/ff-sendto.jpg', 'help/ff-share.jpg', 'help/files-save.jpg'];
