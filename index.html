@@ -46,6 +46,7 @@ button.primary{background:#ffd966}
 #dlg .row input{flex:1}
 #dlg .note{color:#555;font-size:13px}
 #help h3{font-size:16px;margin:18px 0 6px;color:#1f4e79}#help h3:first-child{margin-top:0}#help img{display:block;max-width:100%;max-height:60dvh;margin:8px auto;border:1px solid #bbb;border-radius:8px}#help .cap{text-align:center;font-size:12px;color:#555;margin-top:-4px}#help li{margin:4px 0}#help table{border-collapse:collapse;width:100%;font-size:13px}#help td,#help th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}#help .toc a{color:#1f4e79}
+#help .key{border:2px solid #1f4e79;background:#eef4fb;border-radius:8px;padding:8px 10px;margin:8px 0}
 #dlg .err{color:#b00020;font-weight:600;white-space:pre-wrap}
 </style>
 </head>
@@ -72,6 +73,7 @@ button.primary{background:#ffd966}
 
 <template id="helpTpl">
 <p><b>Flight Plan Transformer</b> converts a flight plan exported from ForeFlight into a file the Garmin GPSMAP 696 can import from an SD card. Version <span id="helpVer"></span>.</p>
+<div class="key"><b>Name your plan.</b> The Garmin lists each plan by the <b>Plan name on the GPS</b> you type when saving, not by the file name. Without it, every round trip from home shows as <code>KBMC-KBMC</code>. Type a clear name such as <code>KDIJ LOOP</code>.</div>
 <p class="toc"><a href="#steps">Quick steps</a> &middot; <a href="#folders">Folders</a> &middot; <a href="#ff">1 Export</a> &middot; <a href="#open">2 Open</a> &middot; <a href="#apply">3 Apply</a> &middot; <a href="#names">4 Names</a> &middot; <a href="#legs">5 Altitudes</a> &middot; <a href="#save">6 Save</a> &middot; <a href="#garmin">7 Garmin</a> &middot; <a href="#rules">Rules</a> &middot; <a href="#config">Configuration</a> &middot; <a href="#offline">Offline</a> &middot; <a href="#trouble">Troubleshooting</a></p>
 
 <h3 data-id="steps">Quick steps</h3>
@@ -80,7 +82,7 @@ button.primary{background:#ffd966}
 <li><b>Open Source</b> and pick that file.</li>
 <li><b>Apply Rules</b>.</li>
 <li>Optional: <b>Waypoint Names</b> and <b>Leg Altitudes</b>.</li>
-<li><b>Save Destination</b> &rarr; <i>Save to Files</i> &rarr; the top level of the SD card, or the <i>Flightplans</i> folder in iCloud Drive and copy it to the card later.</li>
+<li><b>Save Destination</b> &rarr; type a <b>Plan name on the GPS</b> &rarr; <i>Save to Files</i> &rarr; the top level of the SD card, or the <i>Flightplans</i> folder in iCloud Drive and copy it to the card later.</li>
 <li>Garmin 696: <b>FPL</b> key &rarr; Flight Plan List &rarr; <b>IMPORT</b>.</li>
 </ol>
 <p>The button bar scrolls left and right. Swipe it to reach the buttons at the end.</p>
@@ -143,10 +145,16 @@ button.primary{background:#ffd966}
 <h3 data-id="save">6. Save the converted file</h3>
 <ol>
 <li>Tap <b>Save Destination</b>. The app checks the file. <i>XML check passed</i> means it is well formed.</li>
-<li><b>Plan name on the GPS:</b> the Garmin lists the plan by this name, not by the file name, and shows <code>/</code> as <code>-</code>. Give round trips a clear name such as <code>DRIGGS</code>; about 12 characters show in full. If the name is already in the GPS, the Garmin adds a number (<code>KBMC-KBMC 1</code>).</li>
+<li><b>Plan name on the GPS</b> (see the box below).</li>
 <li>Check the file name. It follows the plan name, in capital letters with <code>.fpl</code> added.</li>
 <li>Tap <b>Save</b>, then <b>Save to Files</b>, and choose where it goes:</li>
 </ol>
+<div class="key"><b>Plan name on the GPS</b>
+<ul><li>The Garmin 696 names the plan from this field, not from the file name.</li>
+<li>It starts as the route, for example <code>KBMC/KBMC</code>. The Garmin shows <code>/</code> as <code>-</code>, so every round trip from home would be called <code>KBMC-KBMC</code>.</li>
+<li>Type a clear name, for example <code>KDIJ LOOP</code> or <code>DRIGGS</code>. The file name follows it.</li>
+<li>Capital letters, numbers, spaces and <code>/</code>, up to 25. Keep it to about 12 so it shows in full.</li>
+<li>If a plan with that name is already in the GPS, the Garmin adds a number (<code>KBMC-KBMC 1</code>). Delete the old plan on the Garmin first, or use a new name.</li></ul></div>
 <img src="help/app-save.png" alt="Save screen"><div class="cap">Save Destination</div>
 <p><b>Option A: straight to the SD card.</b> Plug in the SD card reader, choose the SD card under Locations, and save at the <b>top level</b> of the card, not in a folder.</p>
 <p><b>Option B: to iCloud, copy to the card later.</b> Save in <b>iCloud Drive &rarr; Flightplans</b>. When you are ready, open the <b>Files</b> app, touch and hold the file, tap <b>Copy</b>, open the SD card, touch and hold an empty spot at the top level, and tap <b>Paste</b>. This keeps a copy on all your devices.</p>
@@ -563,7 +571,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
 <script>
 /* ===== Screen code ===== */
 (function () {
-  const APP_VERSION = '2026.1.1', BUILD_DATE = '2026-10-16';
+  const APP_VERSION = '2026.1.2', BUILD_DATE = '2026-10-16';
   const $ = id => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem('fpt.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
