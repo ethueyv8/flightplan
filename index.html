@@ -45,6 +45,7 @@ button.primary{background:#ffd966}
 #dlg .row span{flex:1;font-family:Menlo,Consolas,monospace}
 #dlg .row input{flex:1}
 #dlg .note{color:#555;font-size:13px}
+#help h3{font-size:16px;margin:18px 0 6px;color:#1f4e79}#help h3:first-child{margin-top:0}#help img{display:block;max-width:100%;max-height:60dvh;margin:8px auto;border:1px solid #bbb;border-radius:8px}#help .cap{text-align:center;font-size:12px;color:#555;margin-top:-4px}#help li{margin:4px 0}#help table{border-collapse:collapse;width:100%;font-size:13px}#help td,#help th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}#help .toc a{color:#1f4e79}
 #dlg .err{color:#b00020;font-weight:600;white-space:pre-wrap}
 </style>
 </head>
@@ -68,6 +69,143 @@ button.primary{background:#ffd966}
 <div class="label" id="dstLabel">Destination</div>
 <div class="pane" id="dstPane"><div class="inner"><div class="gutter" id="dstGut"></div><div class="code"><div class="hl" id="dstHl"></div><textarea id="dstText" readonly wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea></div></div></div>
 <div id="overlay"><div id="dlg"><h2 id="dlgTitle"></h2><div id="dlgBody"></div><div id="dlgBtns"></div></div></div>
+
+<template id="helpTpl">
+<p><b>Flight Plan Transformer</b> converts a flight plan exported from ForeFlight into a file the Garmin GPSMAP 696 can import from an SD card. Version <span id="helpVer"></span>.</p>
+<p class="toc"><a href="#steps">Quick steps</a> &middot; <a href="#folders">Folders</a> &middot; <a href="#ff">1 Export</a> &middot; <a href="#open">2 Open</a> &middot; <a href="#apply">3 Apply</a> &middot; <a href="#names">4 Names</a> &middot; <a href="#legs">5 Altitudes</a> &middot; <a href="#save">6 Save</a> &middot; <a href="#garmin">7 Garmin</a> &middot; <a href="#rules">Rules</a> &middot; <a href="#config">Configuration</a> &middot; <a href="#offline">Offline</a> &middot; <a href="#trouble">Troubleshooting</a></p>
+
+<h3 data-id="steps">Quick steps</h3>
+<ol>
+<li>ForeFlight: share icon &rarr; <b>Share FPL File</b> &rarr; <i>Save to Files</i> &rarr; <i>Flightplans / ForeFlight Flightplans</i>.</li>
+<li><b>Open Source</b> and pick that file.</li>
+<li><b>Apply Rules</b>.</li>
+<li>Optional: <b>Waypoint Names</b> and <b>Leg Altitudes</b>.</li>
+<li><b>Save Destination</b> &rarr; <i>Save to Files</i> &rarr; the top level of the SD card, or the <i>Flightplans</i> folder in iCloud Drive and copy it to the card later.</li>
+<li>Garmin 696: <b>FPL</b> key &rarr; Flight Plan List &rarr; <b>IMPORT</b>.</li>
+</ol>
+<p>The button bar scrolls left and right. Swipe it to reach the buttons at the end.</p>
+
+<h3 data-id="folders">Set up folders (one time)</h3>
+<p>Keep the ForeFlight files and the converted files apart. In the <b>Files</b> app, tap <b>Browse</b> &rarr; <b>iCloud Drive</b>, then:</p>
+<ol>
+<li>Create a folder named <b>Flightplans</b> (New Folder button, the folder with a +).</li>
+<li>Open it and create a folder inside it named <b>ForeFlight Flightplans</b>.</li>
+</ol>
+<p>Create them in <b>iCloud Drive</b>, not <i>On My iPhone/iPad</i>. Folders on the device can only be seen on that device; iCloud Drive folders appear on all your devices.</p>
+<table><tr><th>Folder</th><th>Holds</th></tr>
+<tr><td>Flightplans / ForeFlight Flightplans</td><td>Files exported from ForeFlight</td></tr>
+<tr><td>Flightplans</td><td>Converted files ready for the Garmin</td></tr></table>
+
+<h3 data-id="ff">1. Export the flight plan from ForeFlight</h3>
+<ol>
+<li>In ForeFlight <b>Maps</b>, build the route and open the flight plan bar (<b>FPL</b>).</li>
+<li>Tap the <b>share</b> icon (box with an arrow) below the route.</li>
+</ol>
+<img src="help/ff-route.jpg" alt="ForeFlight route"><div class="cap">The route in ForeFlight; the share icon is at the left, below the route</div>
+<ol start="3">
+<li>In <b>Send To</b>, tap <b>Share FPL File</b>.</li>
+</ol>
+<img src="help/ff-sendto.jpg" alt="ForeFlight Send To"><div class="cap">Send To &rarr; Share FPL File</div>
+<ol start="4">
+<li>Tap <b>Save to Files</b>. If you do not see it, tap <b>View More</b>.</li>
+</ol>
+<img src="help/ff-share.jpg" alt="Save to Files"><div class="cap">Save to Files</div>
+<ol start="5">
+<li>Choose <b>iCloud Drive &rarr; Flightplans &rarr; ForeFlight Flightplans</b>, give the file a name if you like, and tap <b>Save</b>. The app does not use this name.</li>
+</ol>
+<p>Points you tap on the map are named after their coordinates, such as <code>41.75&deg;N/112.09&deg;W</code>, and ForeFlight cannot rename them. The Garmin cannot use those names, so this app renames them for you (step 4).</p>
+
+<h3 data-id="open">2. Open the ForeFlight file</h3>
+<p>Tap <b>Open Source</b> and pick the file you saved. It appears in the top pane, which cannot be changed. The bottom pane stays empty until you apply the rules.</p>
+<img src="help/app-open.png" alt="Source file opened"><div class="cap">The ForeFlight file in the top pane</div>
+
+<h3 data-id="apply">3. Apply the rules</h3>
+<p>Tap <b>Apply Rules</b>. The converted file appears in the bottom pane.</p>
+<ul>
+<li><b>Yellow</b> lines in the bottom pane were added or changed.</li>
+<li><b>Red</b> lines in the top pane were removed.</li>
+<li>Both panes scroll together, up and down and left and right. Line numbers are on the left.</li>
+<li>You can type directly in the bottom pane. Your edits are highlighted too.</li>
+</ul>
+<img src="help/app-applied.png" alt="Rules applied"><div class="cap">After Apply Rules</div>
+<p>If a message lists warnings, read them. They name anything the Garmin may not accept.</p>
+
+<h3 data-id="names">4. Check the waypoint names</h3>
+<p>Map points are renamed to a short prefix plus a number, for example <code>U141</code>, <code>U142</code>. The prefix is the first airport in the route that is not your Home airport, without a leading K.</p>
+<p>Tap <b>Waypoint Names</b> to see every name. You can type a new name, or type a prefix and tap <b>Renumber user waypoints</b>. Names must be 1 to 8 capital letters or numbers, and each must be different.</p>
+<img src="help/app-names.png" alt="Waypoint Names screen"><div class="cap">Waypoint Names</div>
+<p><b>Important:</b> the Garmin keeps every user waypoint it imports. If a name is already stored in the GPS at a different place, the new plan may replace it. Use a different prefix for each plan to the same airport.</p>
+
+<h3 data-id="legs">5. Leg altitudes (optional)</h3>
+<p>The Garmin has no cruise altitude for each leg, so the altitude is stored as a note in the waypoint comment. Tap <b>Leg Altitudes</b>, type an altitude in feet for any leg (8500 becomes <code>CRZ 8500</code>), or tap <b>Fill all legs</b> to use the ForeFlight altitude. The note goes on the waypoint the leg flies <i>to</i>.</p>
+<img src="help/app-legs.png" alt="Leg Altitudes screen"><div class="cap">Leg Altitudes</div>
+
+<h3 data-id="save">6. Save the converted file</h3>
+<ol>
+<li>Tap <b>Save Destination</b>. The app checks the file. <i>XML check passed</i> means it is well formed.</li>
+<li><b>Plan name on the GPS:</b> the Garmin lists the plan by this name, not by the file name, and shows <code>/</code> as <code>-</code>. Give round trips a clear name such as <code>DRIGGS</code>; about 12 characters show in full. If the name is already in the GPS, the Garmin adds a number (<code>KBMC-KBMC 1</code>).</li>
+<li>Check the file name. It follows the plan name, in capital letters with <code>.fpl</code> added.</li>
+<li>Tap <b>Save</b>, then <b>Save to Files</b>, and choose where it goes:</li>
+</ol>
+<img src="help/app-save.png" alt="Save screen"><div class="cap">Save Destination</div>
+<p><b>Option A: straight to the SD card.</b> Plug in the SD card reader, choose the SD card under Locations, and save at the <b>top level</b> of the card, not in a folder.</p>
+<p><b>Option B: to iCloud, copy to the card later.</b> Save in <b>iCloud Drive &rarr; Flightplans</b>. When you are ready, open the <b>Files</b> app, touch and hold the file, tap <b>Copy</b>, open the SD card, touch and hold an empty spot at the top level, and tap <b>Paste</b>. This keeps a copy on all your devices.</p>
+<img src="help/files-save.jpg" alt="Save to Files"><div class="cap">Save to Files, in the Flightplans folder</div>
+<p>If a file with that name is already there, iOS asks whether to replace it or keep both.</p>
+
+<h3 data-id="garmin">7. Import into the Garmin 696</h3>
+<ol>
+<li>Unplug the SD card reader, then put the card in the Garmin 696.</li>
+<li>Press the <b>FPL</b> key and turn the FMS joystick to the <b>Flight Plan List</b> page.</li>
+<li>Press the <b>IMPORT</b> softkey. Highlight your plan with the joystick.</li>
+<li>Press <b>IMPORT</b>, then <b>ENT</b>.</li>
+<li>Open the plan and <b>count the waypoints</b>. The Garmin reports success even when it skips points it cannot read.</li>
+</ol>
+<p><b>Always check the imported route on the Garmin map before flight.</b></p>
+
+<h3 data-id="rules">Business Rules</h3>
+<p>The rules are the list of conversion steps, one per line. Lines starting with <code>#</code> are notes; put <code>#</code> in front of a rule to switch it off. Tap <b>Business Rules</b> to view or edit them.</p>
+<ul>
+<li><b>Save</b> keeps your changes on this device and records the date and your name.</li>
+<li><b>Export</b> saves the rules as a text file, to keep or share.</li>
+<li><b>Import</b> loads a rules file, for example one shared by your partner.</li>
+<li><b>Reset to default</b> brings back the built-in rules.</li>
+</ul>
+<p>Rules stay on this device only. Deleting the app icon erases them, so export a copy first if you changed them.</p>
+
+<h3 data-id="config">Configuration</h3>
+<table>
+<tr><th>Setting</th><th>Use</th></tr>
+<tr><td>Colors</td><td>Standard (black on white) or Reverse (white on black)</td></tr>
+<tr><td>Default country code</td><td>Two letters added to airports and fixes. <code>US</code> is normal.</td></tr>
+<tr><td>Home airport</td><td>Never used as the waypoint name prefix. Normally <code>KBMC</code>.</td></tr>
+<tr><td>Your name</td><td>Recorded when you save business rules</td></tr>
+<tr><td>Rules file name</td><td>Name used when you export the rules</td></tr>
+</table>
+<p>Configuration also shows the version and build date.</p>
+<img src="help/app-config.png" alt="Configuration screen"><div class="cap">Configuration</div>
+
+<h3 data-id="offline">Offline use and updates</h3>
+<ul>
+<li>The end of the button bar shows <b>Offline ready &#10003;</b> once this device has a saved copy. After that the app works in airplane mode.</li>
+<li>Your flight plans never leave this device.</li>
+<li>To get an update, open the app from the home screen icon while online, close it, and open it again. Check the version under Configuration. If it does not change, delete the icon, open the app address in Safari, and add it to the home screen again (export your rules first).</li>
+</ul>
+
+<h3 data-id="trouble">Troubleshooting</h3>
+<table>
+<tr><th>Problem</th><th>What to do</th></tr>
+<tr><td>Some waypoints missing on the Garmin</td><td>Open <b>Waypoint Names</b>. Every name must be 1 to 8 capital letters or numbers.</td></tr>
+<tr><td>Plan imported but empty</td><td>Check the warnings after Apply Rules, and that the file was saved at the top level of the card.</td></tr>
+<tr><td>Folders missing on another device</td><td>They were made <i>On My iPhone/iPad</i>. Make them in <b>iCloud Drive</b> instead.</td></tr>
+<tr><td>Plan shows on the Garmin with a number added (KBMC-KBMC 1)</td><td>A plan with that name was already stored. Use a different <b>Plan name on the GPS</b> when saving, or delete the old plan on the Garmin.</td></tr>
+<tr><td>A stored waypoint moved</td><td>Two plans used the same name. Renumber with a different prefix.</td></tr>
+<tr><td>XML check FAILED</td><td>An edit in the bottom pane broke a tag. Tap <b>Apply Rules</b> to start again.</td></tr>
+<tr><td>App will not open offline</td><td>Open it from the home screen icon while online until it shows Offline ready.</td></tr>
+<tr><td>Rules seem out of date after an update</td><td>Business Rules &rarr; <b>Reset to default</b> &rarr; Save.</td></tr>
+</table>
+<p class="note">This app helps prepare a file. The pilot is responsible for checking the route before flight.</p>
+</template>
 
 <script id="core">
 /* ===== Core transformation logic (no screen code) ===== */
@@ -387,6 +525,12 @@ const FPT = (function () {
     const m = text.match(/<flight-data>[\s\S]*?<altitude-ft>\s*(\d+)\s*<\/altitude-ft>/);
     return m ? m[1] : '';
   }
+  function getPlanName(text) { const m = text.match(/<route-name>([^<]*)<\/route-name>/); return m ? m[1] : ''; }
+  function setPlanName(text, name) {
+    if (/<route-name>[^<]*<\/route-name>/.test(text)) return text.replace(/<route-name>[^<]*<\/route-name>/, '<route-name>' + name + '</route-name>');
+    return text.replace(/(<route>\s*?\n?)([ \t]*)/, (m, a, ind) => a + ind + '<route-name>' + name + '</route-name>\n' + ind);
+  }
+  function fileFromPlan(name) { return (name || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'FLIGHTPLAN_001'; }
   function suggestName(text) {
     const m = text.match(/<route-name>([^<]*)<\/route-name>/);
     const n = m ? m[1].toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '';
@@ -411,7 +555,7 @@ const FPT = (function () {
     return { added: added, removed: removed };
   }
 
-  return { DEFAULT_RULES, validId, getNames, setNames, renumber, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
+  return { DEFAULT_RULES, getPlanName, setPlanName, fileFromPlan, validId, getNames, setNames, renumber, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
 })();
 if (typeof module !== 'undefined') module.exports = FPT;
 </script>
@@ -419,7 +563,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
 <script>
 /* ===== Screen code ===== */
 (function () {
-  const APP_VERSION = '2.0.2', BUILD_DATE = '2026-10-15';
+  const APP_VERSION = '2026.1.1', BUILD_DATE = '2026-10-16';
   const $ = id => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem('fpt.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -587,17 +731,27 @@ if (typeof module !== 'undefined') module.exports = FPT;
     return '';
   }
   $('bSave').onclick = () => {
-    const text = $('dstText').value, bad = validate(text);
+    const text = $('dstText').value, bad = validate(text), plan = FPT.getPlanName(text);
     const h = (bad ? '<div class="err">XML check FAILED - the Garmin may reject this file:\n' + esc(bad) + '</div>' : '<div class="note">XML check passed.</div>') +
-      '<label>Destination file name</label><input type="text" id="saveName" autocapitalize="characters" value="' + esc(FPT.suggestName(text)) + '">' +
-      '<div class="note">Saved in uppercase with the extension .fpl. Choose "Save to Files" on the next screen and pick the folder or SD card. ' +
-      'If the name already exists there, iOS asks whether to replace it or keep both.</div>';
+      '<label>Plan name on the GPS</label><input type="text" id="planName" autocapitalize="characters" maxlength="25" value="' + esc(plan) + '">' +
+      '<div class="note">The Garmin lists the plan by this name, showing / as -. Capital letters, numbers, spaces and / only, up to 25; about 12 characters show in full. ' +
+      'If a plan with this name is already in the GPS, the Garmin adds a number (for example KBMC-KBMC 1).</div>' +
+      '<label>File name</label><input type="text" id="saveName" autocapitalize="characters" value="' + esc(FPT.fileFromPlan(plan)) + '">' +
+      '<div class="note">Saved in capital letters with .fpl added. Choose "Save to Files" on the next screen, then the top level of the SD card, or the Flightplans folder in iCloud Drive. ' +
+      'If the name already exists there, iOS asks whether to replace it or keep both.</div><div class="err" id="saveErr"></div>';
     dialog('Save Destination File', h, [{ text: 'Cancel' }, {
       text: bad ? 'Save anyway' : 'Save', primary: true, fn: () => {
+        const pn = $('planName').value.toUpperCase().replace(/\s+/g, ' ').trim();
+        if (!/^[A-Z0-9 \/]{1,25}$/.test(pn)) { $('saveErr').textContent = 'Plan name: use 1 to 25 capital letters, numbers, spaces or /.'; return false; }
+        let out = $('dstText').value;
+        if (pn !== FPT.getPlanName(out)) { out = FPT.setPlanName(out, pn); $('dstText').value = out; dirty = true; render(); }
         let n = $('saveName').value.trim().replace(/\.fpl$/i, '').toUpperCase().replace(/[^A-Z0-9_\-]+/g, '-') || 'FLIGHTPLAN_001';
-        deliver(n + '.fpl', text.replace(/\r\n?/g, '\n').split('\n').join(eol)).then(ok => { if (ok) { dirty = false; render(); } });
+        deliver(n + '.fpl', out.replace(/\r\n?/g, '\n').split('\n').join(eol)).then(ok => { if (ok) { dirty = false; render(); } });
       }
     }]);
+    let fileEdited = false;
+    $('saveName').addEventListener('input', () => { fileEdited = true; });
+    $('planName').addEventListener('input', () => { if (!fileEdited) $('saveName').value = FPT.fileFromPlan($('planName').value); });
   };
 
   /* ---------- business rules ---------- */
@@ -648,21 +802,13 @@ if (typeof module !== 'undefined') module.exports = FPT;
   };
 
   /* ---------- help ---------- */
-  $('bHelp').onclick = () => dialog('Help', [
-    '<p><b>What this does:</b> converts a flight plan exported from ForeFlight (.fpl) into the layout the Garmin GPSMAP 696 expects.</p>',
-    '<ol><li>In ForeFlight, export the flight plan as .fpl and save it to Files.</li>',
-    '<li><b>Open Source</b> and pick that file. It appears in the top pane and cannot be edited.</li>',
-    '<li><b>Apply Rules</b>. The converted file appears in the bottom pane. Yellow lines were added or changed; red lines in the top pane were removed.</li>',
-    '<li>Map points from ForeFlight (named like 40.981/-111.921) are renamed automatically, for example BTF1, BTF2. Use <b>Waypoint Names</b> to check or change the names.</li>',
-    '<li>Optional: <b>Leg Altitudes</b> to note a cruise altitude for each leg, or type directly in the bottom pane.</li>',
-    '<li><b>Save Destination</b>, check the name, then choose <i>Save to Files</i> and pick the SD card.</li>',
-    '<li>Put the SD card in the Garmin 696 and import the flight plan.</li></ol>',
-    '<p><b>Scrolling:</b> the two panes scroll together, up/down and left/right.</p>',
-    '<p><b>Business Rules:</b> the list of conversion steps. It can be edited, exported to share with another device, and imported. Rules are kept on this device only. Removing the app from the home screen erases them, so export a copy if you customize them.</p>',
-    '<p><b>Configuration:</b> colors, country code (normally US), home airport, your name, and the rules file name.</p>',
-    '<p><b>Offline:</b> open the app from the home screen icon while online until the top bar shows <i>Offline ready</i>. After that it works with no internet connection. Your flight plans never leave this device.</p>',
-    '<p class="note">Always verify the imported route on the Garmin before flight.</p>'
-  ].join(''), [{ text: 'Close', primary: true }]);
+  $('bHelp').onclick = () => {
+    dialog('Help - version ' + APP_VERSION, '<div id="help">' + $('helpTpl').innerHTML + '</div>', [{ text: 'Close', primary: true }]);
+    $('helpVer').textContent = APP_VERSION + ' (built ' + BUILD_DATE + ')';
+    document.querySelectorAll('#help .toc a').forEach(a => a.onclick = e => {
+      e.preventDefault(); const t = document.querySelector('#help [data-id="' + a.getAttribute('href').slice(1) + '"]'); if (t) t.scrollIntoView();
+    });
+  };
 
   window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
   /* offline readiness: green when this device holds a saved copy of the app */
