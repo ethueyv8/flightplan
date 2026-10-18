@@ -4,7 +4,7 @@ Converts a flight plan exported from **ForeFlight** (`.fpl`) into a file the **G
 
 **App:** https://ethueyv8.github.io/flightplan/
 
-Current version: **2026.1.2**
+Current version: **2026.2.0**
 
 ## Install (each iPhone or iPad)
 
@@ -21,6 +21,7 @@ Always open the app from the icon, not from Safari. The full instructions are in
 - Renames map points ForeFlight names after coordinates (such as `41.75N/112.09W`) to names the 696 accepts (1 to 8 capital letters or numbers, for example `DIJ1`)
 - Adds country codes, blank comments and the 696 layout; rounds coordinates to 6 decimals
 - Sets the **plan name** the 696 shows in its flight plan list
+- Keeps waypoint names unique between pilots: each pilot has a waypoint letter, and the app refuses a name already used at another place
 - Optional cruise-altitude notes for each leg
 
 The rules are listed and editable in the app under **Business Rules**.
@@ -44,7 +45,7 @@ All files must stay at the top level, with the pictures inside `help/`.
 2. Every new version must include a new `sw.js` (its `CACHE` line carries the version). Without it, devices keep the old version.
 3. On each device, open the app from the icon while online, close it, and open it again. Check the version under **Configuration**. If it has not changed, delete the icon and install again (export any changed business rules first).
 
-Version numbers are **year.release.fix**, for example `2026.1.2`.
+Version numbers are **year.release.fix**, for example `2026.2.0`.
 
 ## Privacy
 
