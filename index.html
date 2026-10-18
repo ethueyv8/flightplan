@@ -65,6 +65,7 @@ button.primary{background:#ffd966}
 </div>
 <input type="file" id="file" style="display:none">
 <input type="file" id="rulesFile" style="display:none">
+<input type="file" id="regFiles" multiple style="display:none">
 <div class="label" id="srcLabel">Source (read-only)</div>
 <div class="pane" id="srcPane"><div class="inner"><div class="gutter" id="srcGut"></div><div class="code"><div class="hl" id="srcHl"></div><pre id="srcText"></pre></div></div></div>
 <div class="label" id="dstLabel">Destination</div>
@@ -78,7 +79,7 @@ button.primary{background:#ffd966}
 
 <h3 data-id="steps">Quick steps</h3>
 <ol>
-<li>ForeFlight: share icon &rarr; <b>Share FPL File</b> &rarr; <i>Save to Files</i> &rarr; <i>Flightplans / ForeFlight Flightplans</i>.</li>
+<li>ForeFlight app on your iPhone/iPad (not a computer browser): share icon &rarr; <b>Share FPL File</b> &rarr; <i>Save to Files</i> &rarr; <i>Flightplans / ForeFlight Flightplans</i>.</li>
 <li><b>Open Source</b> and pick that file.</li>
 <li><b>Apply Rules</b>.</li>
 <li>Optional: <b>Waypoint Names</b> and <b>Leg Altitudes</b>.</li>
@@ -99,6 +100,7 @@ button.primary{background:#ffd966}
 <tr><td>Flightplans</td><td>Converted files ready for the Garmin</td></tr></table>
 
 <h3 data-id="ff">1. Export the flight plan from ForeFlight</h3>
+<div class="key"><b>Use the ForeFlight app on your iPhone or iPad.</b> ForeFlight in a computer web browser cannot save a flight plan file.</div>
 <ol>
 <li>In ForeFlight <b>Maps</b>, build the route and open the flight plan bar (<b>FPL</b>).</li>
 <li>Tap the <b>share</b> icon (box with an arrow) below the route.</li>
@@ -136,11 +138,23 @@ button.primary{background:#ffd966}
 <p>Map points are renamed to a short prefix plus a number, for example <code>U141</code>, <code>U142</code>. The prefix is the first airport in the route that is not your Home airport, without a leading K.</p>
 <p>Tap <b>Waypoint Names</b> to see every name. You can type a new name, or type a prefix and tap <b>Renumber user waypoints</b>. Names must be 1 to 8 capital letters or numbers, and each must be different.</p>
 <img src="help/app-names.png" alt="Waypoint Names screen"><div class="cap">Waypoint Names</div>
+<div class="key"><b>Two pilots, one GPS.</b> Each person sets a different <b>Your waypoint letter</b> in Configuration (for example E and V; K is not allowed because it looks like an airport code). New names start with it, such as <code>EDIJ1</code>. The app remembers every name it has saved, with its position, and will not save a name that is already used at another place. To check against names made on another device or by your partner, use <b>Configuration &rarr; Load plans to check</b> and pick their saved .fpl files, or the GPS waypoint export (<code>Waypoints1.gpx</code>: on the 696, User Waypoints, MENU, Export). If a name is already in the GPS at a different place, the 696 keeps the old point and saves the new one with a 0 added (<code>DIJ1</code> becomes <code>DIJ10</code>).</div>
 <p><b>Important:</b> the Garmin keeps every user waypoint it imports. If a name is already stored in the GPS at a different place, the new plan may replace it. Use a different prefix for each plan to the same airport.</p>
 
 <h3 data-id="legs">5. Leg altitudes (optional)</h3>
 <p>The Garmin has no cruise altitude for each leg, so the altitude is stored as a note in the waypoint comment. Tap <b>Leg Altitudes</b>, type an altitude in feet for any leg (8500 becomes <code>CRZ 8500</code>), or tap <b>Fill all legs</b> to use the ForeFlight altitude. The note goes on the waypoint the leg flies <i>to</i>.</p>
 <img src="help/app-legs.png" alt="Leg Altitudes screen"><div class="cap">Leg Altitudes</div>
+
+<h3>Reading the altitude on the 696</h3>
+<ol>
+<li>Open the flight plan on the 696.</li>
+<li>Press the <b>down</b> arrow to highlight a user waypoint, for example <code>DIJ2</code>.</li>
+<li>Press <b>ENT</b>. The <b>User Waypoint</b> page shows the note, such as <code>CRZ 9500</code>, at the top right of the <b>INFO</b> box.</li>
+<li>Press <b>ENT</b> on <b>Done</b> to close it.</li>
+</ol>
+<p>Only user waypoints keep a note. Airports and named fixes do not show one.</p>
+<h3>Stored user waypoints on the 696</h3>
+<p>Press <b>MENU</b>, then <b>MENU</b> again for the <b>Main Menu</b>, select <b>User Waypoints</b> and press <b>ENT</b>. The list shows every user waypoint the 696 keeps, including ones from deleted plans. Highlight one and press <b>ENT</b> to view or delete it. If a plan still uses it, the 696 warns <i>It is used in a flight plan</i>; choose <b>No</b> unless you no longer need that plan. The flight plan page shows only the first 8 characters of a name.</p>
 
 <h3 data-id="save">6. Save the converted file</h3>
 <ol>
@@ -212,6 +226,7 @@ button.primary{background:#ffd966}
 <tr><td>App will not open offline</td><td>Open it from the home screen icon while online until it shows Offline ready.</td></tr>
 <tr><td>Rules seem out of date after an update</td><td>Business Rules &rarr; <b>Reset to default</b> &rarr; Save.</td></tr>
 </table>
+<p class="note">Questions or suggestions: eric@thueson.com</p>
 <p class="note">This app helps prepare a file. The pilot is responsible for checking the route before flight.</p>
 </template>
 
@@ -390,7 +405,7 @@ const FPT = (function () {
           break;
         case 'RENAME_WAYPOINTS': {
           const max = parseInt(p.max_length || '8', 10) || 8;
-          renameInvalid(doc, (p.prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), max, cfg.home);
+          renameInvalid(doc, (p.prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), max, cfg.home, cfg.letter || '', cfg.reg || null);
           break;
         }
         case 'CLEAN_TEXT': {
@@ -478,19 +493,87 @@ const FPT = (function () {
   function applyNames(doc, map) {
     all(doc, 'identifier').concat(all(doc, 'waypoint-identifier')).forEach(n => { if (map[n.text] !== undefined) n.text = map[n.text]; });
   }
-  function renameInvalid(doc, prefix, max, home) {
+  /* ----- name register (names already used, with their positions) ----- */
+  const SAME_NM = 0.1;
+  function nm(a, b, c, d) {
+    const R = 3440.065, t = x => x * Math.PI / 180;
+    return 2 * R * Math.asin(Math.sqrt(Math.sin(t(c - a) / 2) ** 2 + Math.cos(t(a)) * Math.cos(t(c)) * Math.sin(t(d - b) / 2) ** 2));
+  }
+  function wpPos(doc, id) {
+    const w = all(doc, 'waypoint').find(x => ((kid(x, 'identifier') || {}).text || '') === id);
+    if (!w) return null;
+    const la = parseFloat((kid(w, 'lat') || {}).text), lo = parseFloat((kid(w, 'lon') || {}).text);
+    return isNaN(la) || isNaN(lo) ? null : { lat: la, lon: lo, type: (kid(w, 'type') || {}).text || '' };
+  }
+  function takenElsewhere(reg, name, pos) {
+    const r = reg && reg[name];
+    return !!(r && pos && nm(r.lat, r.lon, pos.lat, pos.lon) > SAME_NM);
+  }
+  function regAt(reg, pos, letter, avoid) {
+    if (!reg || !pos) return '';
+    // Any name already stored at this same position is reused (same point, no duplicate waypoint), whoever made it.
+    return Object.keys(reg).find(k => validId(k, 8) && !avoid.has(k) && nm(reg[k].lat, reg[k].lon, pos.lat, pos.lon) <= SAME_NM) || '';
+  }
+  function nextName(pre, max, used, reg, pos, n) {
+    let name;
+    do { n.v++; const s = String(n.v); name = pre.slice(0, Math.max(1, max - s.length)) + s; } while (used.has(name) || takenElsewhere(reg, name, pos));
+    return name;
+  }
+  function renameInvalid(doc, prefix, max, home, letter, reg) {
     const ids = idsOf(doc), used = new Set(ids.filter(i => validId(i, max)));
-    const pre = prefix || defaultPrefix(doc, home), map = {}; let n = 0;
+    const pre = (letter || '') + (prefix || defaultPrefix(doc, home)), map = {}, n = { v: 0 };
     ids.forEach(id => {
-      const up = id.toUpperCase();
+      const up = id.toUpperCase(), pos = wpPos(doc, id);
       if (validId(id, max)) return;
-      if (validId(up, max) && !used.has(up)) { map[id] = up; used.add(up); return; }
-      let name;
-      do { n++; const s = String(n); name = pre.slice(0, Math.max(1, max - s.length)) + s; } while (used.has(name));
+      if (validId(up, max) && !used.has(up) && !takenElsewhere(reg, up, pos)) { map[id] = up; used.add(up); return; }
+      let name = regAt(reg, pos, letter, used);
+      if (!name) name = nextName(pre, max, used, reg, pos, n);
       used.add(name); map[id] = name;
     });
     applyNames(doc, map);
     return map;
+  }
+  function userWaypoints(doc) {
+    return all(doc, 'waypoint').filter(w => ((kid(w, 'type') || {}).text || '') === 'USER WAYPOINT').map(w => (kid(w, 'identifier') || {}).text || '');
+  }
+  // Names in this plan that are already registered at a different place.
+  function checkNames(text, reg) {
+    const doc = parseXml(text), out = [], seen = {};
+    userWaypoints(doc).forEach(id => {
+      if (seen[id]) return; seen[id] = 1;
+      const pos = wpPos(doc, id);
+      if (takenElsewhere(reg, id, pos)) out.push({ name: id, plan: reg[id].plan || '', date: reg[id].date || '', dist: nm(reg[id].lat, reg[id].lon, pos.lat, pos.lon) });
+    });
+    return out;
+  }
+  function fixConflicts(text, reg, letter, home) {
+    const doc = parseXml(text), bad = checkNames(text, reg).map(c => c.name);
+    if (!bad.length) return text;
+    const used = new Set(idsOf(doc)), map = {}, n = { v: 0 }, pre = (letter || '') + defaultPrefix(doc, home);
+    bad.forEach(id => {
+      const pos = wpPos(doc, id); used.delete(id);
+      let name = regAt(reg, pos, letter, used);
+      if (!name) name = nextName(pre, 8, used, reg, pos, n);
+      used.add(name); map[id] = name;
+    });
+    applyNames(doc, map);
+    const im = text.match(/\n([ \t]+)</);
+    return serialize(doc, im ? im[1] : '', '\n');
+  }
+  // User waypoints in a flight plan (.fpl) or a Garmin waypoint export (.gpx).
+  function harvest(text, src) {
+    const out = [];
+    if (/<gpx[\s>]/.test(text)) {
+      const re = /<wpt\s+([^>]*)>([\s\S]*?)<\/wpt>/g; let m;
+      while ((m = re.exec(text))) {
+        const la = (m[1].match(/lat="([^"]+)"/) || [])[1], lo = (m[1].match(/lon="([^"]+)"/) || [])[1], nmx = (m[2].match(/<name>([^<]*)<\/name>/) || [])[1];
+        if (la && lo && nmx) out.push({ name: nmx.trim().toUpperCase(), lat: +la, lon: +lo, plan: src || 'GPS export' });
+      }
+      return out;
+    }
+    const doc = parseXml(text), plan = getPlanName(text) || src || '';
+    userWaypoints(doc).forEach(id => { const p = wpPos(doc, id); if (p && id) out.push({ name: id, lat: p.lat, lon: p.lon, plan: plan }); });
+    return out;
   }
   function getNames(text, home) {
     const doc = parseXml(text);
@@ -504,14 +587,14 @@ const FPT = (function () {
     const im = text.match(/\n([ \t]+)</);
     return serialize(doc, im ? im[1] : '', '\n');
   }
-  function renumber(text, prefix, max, home) {
-    // Rename all user waypoints to PREFIX + number, in route order.
+  function renumber(text, prefix, max, home, reg) {
+    // Rename all user waypoints to PREFIX + number, in route order, skipping names registered elsewhere.
     const doc = parseXml(text), ids = idsOf(doc), m = max || 8;
-    const user = new Set(all(doc, 'waypoint').filter(w => ((kid(w, 'type') || {}).text || '') === 'USER WAYPOINT').map(w => (kid(w, 'identifier') || {}).text || ''));
+    const user = new Set(userWaypoints(doc));
     const pre = (prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || defaultPrefix(doc, home);
-    const used = new Set(ids.filter(i => !user.has(i))), map = {}; let n = 0;
+    const used = new Set(ids.filter(i => !user.has(i))), map = {}, n = { v: 0 };
     ids.filter(i => user.has(i)).forEach(id => {
-      let name; do { n++; const s = String(n); name = pre.slice(0, Math.max(1, m - s.length)) + s; } while (used.has(name));
+      const name = nextName(pre, m, used, reg, wpPos(doc, id), n);
       used.add(name); map[id] = name;
     });
     return map;
@@ -563,7 +646,7 @@ const FPT = (function () {
     return { added: added, removed: removed };
   }
 
-  return { DEFAULT_RULES, getPlanName, setPlanName, fileFromPlan, validId, getNames, setNames, renumber, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
+  return { DEFAULT_RULES, nm, checkNames, fixConflicts, harvest, wpPosText: (t, id) => wpPos(parseXml(t), id), getPlanName, setPlanName, fileFromPlan, validId, getNames, setNames, renumber, parseXml, transform, getLegs, setLegs, sourceAltitude, suggestName, diff, legText };
 })();
 if (typeof module !== 'undefined') module.exports = FPT;
 </script>
@@ -571,13 +654,23 @@ if (typeof module !== 'undefined') module.exports = FPT;
 <script>
 /* ===== Screen code ===== */
 (function () {
-  const APP_VERSION = '2026.1.2', BUILD_DATE = '2026-10-16';
+  const APP_VERSION = '2026.2.0', BUILD_DATE = '2026-10-16';
   const $ = id => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem('fpt.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('fpt.' + k, JSON.stringify(v)); } catch (e) { } }
   };
-  let cfg = Object.assign({ theme: 'standard', country: 'US', home: 'KBMC', user: '', rulesName: 'DefaultBusinessRules_001.txt' }, store.get('cfg', {}));
+  let cfg = Object.assign({ theme: 'standard', country: 'US', home: 'KBMC', letter: '', user: '', rulesName: 'DefaultBusinessRules_001.txt' }, store.get('cfg', {}));
+  let reg = store.get('reg', {});
+  function regAdd(list, overwrite) {
+    let added = 0; const d = new Date().toISOString().slice(0, 10);
+    list.forEach(e => {
+      if (!e.name || isNaN(e.lat) || isNaN(e.lon)) return;
+      if (!reg[e.name] || overwrite) { if (!reg[e.name]) added++; reg[e.name] = { lat: e.lat, lon: e.lon, plan: e.plan || '', date: e.date || d }; }
+    });
+    store.set('reg', reg); return added;
+  }
+  const xcfg = () => Object.assign({}, cfg, { reg: reg });
   let rules = store.get('rules', null) || { text: FPT.DEFAULT_RULES, rev: 1, edited: '', by: '' };
   let srcText = '', srcName = '', applied = false, dirty = false, eol = '\r\n';
 
@@ -668,7 +761,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
   $('bApply').onclick = () => {
     if (applied && dirty && !confirm('Applying the rules again replaces your edits in the destination pane. Continue?')) return;
     try {
-      const r = FPT.transform(srcText, rules.text, cfg);
+      const r = FPT.transform(srcText, rules.text, xcfg());
       $('dstText').value = r.text; eol = r.eol; applied = true; dirty = true; render();
       if (r.warnings.length) message('Rules applied with warnings', r.warnings.join('\n'));
     } catch (e) { message('Could not apply rules', 'The source file is not valid XML.\n\n' + e.message); }
@@ -700,9 +793,9 @@ if (typeof module !== 'undefined') module.exports = FPT;
   /* ---------- waypoint names ---------- */
   $('bNames').onclick = () => {
     let info;
-    try { info = FPT.getNames($('dstText').value, cfg.home); }
+    try { info = FPT.getNames($('dstText').value, cfg.home); info.prefix = (cfg.letter || '') + info.prefix; }
     catch (e) { return message('Waypoint Names', 'The destination text is not valid XML, so the names cannot be read.\n\n' + e.message); }
-    let h = '<div class="note">The Garmin accepts names of 1 to 8 capital letters and numbers. Each name must be different from waypoints already stored in the GPS, or the stored one may be replaced.</div>' +
+    let h = (cfg.letter ? '' : '<div class="err">Set "Your waypoint letter" in Configuration so your names cannot clash with your partner\'s.</div>') + '<div class="note">The Garmin accepts names of 1 to 8 capital letters and numbers. Each name must be different from waypoints already stored in the GPS, or the stored one may be replaced.</div>' +
       '<div class="row"><input type="text" id="nmPrefix" autocapitalize="characters" value="' + esc(info.prefix) + '"><button id="nmRenum">Renumber user waypoints</button></div><hr>';
     info.names.forEach((n, i) => {
       h += '<div class="row"><span style="flex:0 0 40%;overflow:hidden;text-overflow:ellipsis">' + esc(n.id) + '<br><small>' + esc(n.type) + '</small></span>' +
@@ -714,8 +807,10 @@ if (typeof module !== 'undefined') module.exports = FPT;
         const map = {}, vals = [], errs = [];
         document.querySelectorAll('#dlg .nm').forEach(x => {
           const id = info.names[+x.dataset.i].id, v = x.value.trim().toUpperCase();
+          const nn = info.names[+x.dataset.i], pos = nn.type === 'USER WAYPOINT' ? FPT.wpPosText($('dstText').value, nn.id) : null;
           if (!FPT.validId(v, 8)) errs.push('"' + x.value + '" - use 1 to 8 letters and numbers only');
           else if (vals.indexOf(v) >= 0) errs.push('"' + v + '" is used twice');
+          else if (pos && reg[v] && FPT.nm(reg[v].lat, reg[v].lon, pos.lat, pos.lon) > 0.1) errs.push('"' + v + '" is already used at another place (plan ' + (reg[v].plan || '?') + '). Choose another name.');
           vals.push(v); if (v !== id) map[id] = v;
         });
         if (errs.length) { $('nmErr').textContent = errs.join('\n'); return false; }
@@ -723,7 +818,7 @@ if (typeof module !== 'undefined') module.exports = FPT;
       }
     }]);
     $('nmRenum').onclick = () => {
-      const map = FPT.renumber($('dstText').value, $('nmPrefix').value, 8, cfg.home);
+      const map = FPT.renumber($('dstText').value, $('nmPrefix').value, 8, cfg.home, reg);
       document.querySelectorAll('#dlg .nm').forEach(x => { const id = info.names[+x.dataset.i].id; if (map[id]) x.value = map[id]; });
     };
   };
@@ -740,7 +835,10 @@ if (typeof module !== 'undefined') module.exports = FPT;
   }
   $('bSave').onclick = () => {
     const text = $('dstText').value, bad = validate(text), plan = FPT.getPlanName(text);
-    const h = (bad ? '<div class="err">XML check FAILED - the Garmin may reject this file:\n' + esc(bad) + '</div>' : '<div class="note">XML check passed.</div>') +
+    let clash = [];
+    if (!bad) { try { clash = FPT.checkNames(text, reg); } catch (e) { } }
+    const h = (clash.length ? '<div class="err">Waypoint name already used at another place:\n' + clash.map(c => c.name + ' - in ' + (c.plan || 'an earlier plan') + ', ' + c.dist.toFixed(1) + ' nm away').join('\n') +
+      '\nThe GPS would keep the old point and store this one with a 0 added, so the names would not match.</div><div class="row"><button id="fixNames" class="primary">Rename these automatically</button></div>' : '') + (bad ? '<div class="err">XML check FAILED - the Garmin may reject this file:\n' + esc(bad) + '</div>' : '<div class="note">XML check passed.</div>') +
       '<label>Plan name on the GPS</label><input type="text" id="planName" autocapitalize="characters" maxlength="25" value="' + esc(plan) + '">' +
       '<div class="note">The Garmin lists the plan by this name, showing / as -. Capital letters, numbers, spaces and / only, up to 25; about 12 characters show in full. ' +
       'If a plan with this name is already in the GPS, the Garmin adds a number (for example KBMC-KBMC 1).</div>' +
@@ -749,14 +847,20 @@ if (typeof module !== 'undefined') module.exports = FPT;
       'If the name already exists there, iOS asks whether to replace it or keep both.</div><div class="err" id="saveErr"></div>';
     dialog('Save Destination File', h, [{ text: 'Cancel' }, {
       text: bad ? 'Save anyway' : 'Save', primary: true, fn: () => {
+        try { if (FPT.checkNames($('dstText').value, reg).length) { $('saveErr').textContent = 'Fix the waypoint names first (button at the top).'; return false; } } catch (e) { }
         const pn = $('planName').value.toUpperCase().replace(/\s+/g, ' ').trim();
         if (!/^[A-Z0-9 \/]{1,25}$/.test(pn)) { $('saveErr').textContent = 'Plan name: use 1 to 25 capital letters, numbers, spaces or /.'; return false; }
         let out = $('dstText').value;
         if (pn !== FPT.getPlanName(out)) { out = FPT.setPlanName(out, pn); $('dstText').value = out; dirty = true; render(); }
         let n = $('saveName').value.trim().replace(/\.fpl$/i, '').toUpperCase().replace(/[^A-Z0-9_\-]+/g, '-') || 'FLIGHTPLAN_001';
-        deliver(n + '.fpl', out.replace(/\r\n?/g, '\n').split('\n').join(eol)).then(ok => { if (ok) { dirty = false; render(); } });
+        deliver(n + '.fpl', out.replace(/\r\n?/g, '\n').split('\n').join(eol)).then(ok => {
+          if (ok) { dirty = false; try { regAdd(FPT.harvest(out, pn), false); } catch (e) { } render(); }
+        });
       }
     }]);
+    if ($('fixNames')) $('fixNames').onclick = () => {
+      $('dstText').value = FPT.fixConflicts($('dstText').value, reg, cfg.letter || '', cfg.home); dirty = true; render(); closeDialog(); $('bSave').onclick();
+    };
     let fileEdited = false;
     $('saveName').addEventListener('input', () => { fileEdited = true; });
     $('planName').addEventListener('input', () => { if (!fileEdited) $('saveName').value = FPT.fileFromPlan($('planName').value); });
@@ -792,6 +896,9 @@ if (typeof module !== 'undefined') module.exports = FPT;
       '<div class="row"><input type="radio" name="theme" id="thR" style="flex:none"' + (cfg.theme === 'reverse' ? ' checked' : '') + '><span>Reverse - white text on black</span></div>' +
       '<label>Default country code</label><input type="text" id="cCountry" autocapitalize="characters" value="' + esc(cfg.country) + '">' +
       '<label>Home airport (not used as the waypoint name prefix)</label><input type="text" id="cHome" autocapitalize="characters" value="' + esc(cfg.home) + '">' +
+      '<label>Your waypoint letter (one letter, different for each person, e.g. E or V; not K)</label><input type="text" id="cLetter" maxlength="1" autocapitalize="characters" value="' + esc(cfg.letter) + '">' +
+      '<label>Waypoint name register</label><div class="note">' + Object.keys(reg).length + ' names remembered on this device. Load saved plans (yours from other devices, your partner\'s) or a waypoint export from the GPS so their names are checked too.</div>' +
+      '<div class="row"><button id="regLoad">Load plans to check</button><button id="regClear">Clear register</button></div><div class="note" id="regMsg"></div>' +
       '<label>Your name (recorded when business rules are edited)</label><input type="text" id="cUser" value="' + esc(cfg.user) + '">' +
       '<label>Business rules file name (used for export)</label><input type="text" id="cRules" value="' + esc(cfg.rulesName) + '">' +
       '<p class="note">Flight Plan Transformer version ' + APP_VERSION + ' &middot; built ' + BUILD_DATE + '<br>Files are opened and saved through the iOS Files screens, which remember the last folder used.</p>';
@@ -803,10 +910,30 @@ if (typeof module !== 'undefined') module.exports = FPT;
         cfg.country = cc;
         cfg.user = $('cUser').value.trim();
         cfg.home = $('cHome').value.trim().toUpperCase();
+        const lt = $('cLetter').value.trim().toUpperCase();
+        if (lt && !/^[A-Z]$/.test(lt)) { alert('Waypoint letter must be one letter, A to Z.'); return false; }
+        if (lt === 'K') { alert('K is not allowed: names like KDIJ1 look like airport codes (KDIJ). Choose another letter, for example V.'); return false; }
+        cfg.letter = lt;
         cfg.rulesName = $('cRules').value.trim() || 'DefaultBusinessRules_001.txt';
         store.set('cfg', cfg); applyTheme();
       }
     }]);
+    $('regLoad').onclick = () => { $('regFiles').value = ''; $('regFiles').click(); };
+    $('regClear').onclick = () => { if (confirm('Forget all remembered waypoint names on this device?')) { reg = {}; store.set('reg', reg); $('regMsg').textContent = 'Register cleared.'; } };
+  };
+  $('regFiles').onchange = e => {
+    const files = Array.from(e.target.files || []); let added = 0, done = 0, failed = [];
+    files.forEach(f => {
+      const r = new FileReader();
+      r.onload = () => {
+        try { added += regAdd(FPT.harvest(String(r.result), f.name.replace(/\.[^.]+$/, '')), false); } catch (x) { failed.push(f.name); }
+        if (++done === files.length) {
+          const m = 'Read ' + files.length + ' file(s): ' + added + ' new names. ' + Object.keys(reg).length + ' names remembered.' + (failed.length ? ' Could not read: ' + failed.join(', ') : '');
+          if ($('regMsg')) $('regMsg').textContent = m; else message('Waypoint name register', m);
+        }
+      };
+      r.readAsText(f);
+    });
   };
 
   /* ---------- help ---------- */
